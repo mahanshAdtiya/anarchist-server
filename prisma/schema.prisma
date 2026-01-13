@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model Admin {
@@ -21,16 +20,19 @@ model Admin {
 }
 
 model User {
-  id          String          @id @default(uuid()) @db.Uuid
+  id          String   @id @default(uuid()) @db.Uuid
   name        String
-  email       String          @unique
-  phoneNumber String?         @unique
-  type        String            @default("CUSTOMER")
+  email       String   @unique
+  phoneNumber String?  @unique
+  type        String   @default("CUSTOMER")
 
-  createdAt   DateTime        @default(now()) @db.Timestamp(6)
-  updatedAt   DateTime        @updatedAt @db.Timestamp(6)
+  isMember    Boolean  @default(false)  
+
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @db.Timestamp(6)
 
   authentications Authentication[]
+  orders        Order[]    
 
   @@map("users")
 }
@@ -49,40 +51,130 @@ model Authentication {
   @@unique([userId]) 
 }
 
+model Order {
+  id                      String   @id @default(uuid()) @db.Uuid
+  userId                  String?  @db.Uuid  
+  user                    User?    @relation(fields: [userId], references: [id])
+
+  guestEmail              String?  
+  guestPhone              String?  
+
+  status                  String   @default("PENDING") // PENDING, SHIPPED, DELIVERED, CANCELED
+  shippingAddress         Json     
+  billingAddress          Json     
+  isShippingSameAsBilling Boolean  @default(true)
+  price                   Decimal  
+
+  orderItems              OrderItem[] 
+  isPaid                  Boolean  @default(false)
+
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@index([userId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(uuid()) @db.Uuid
+  orderId   String  @db.Uuid
+  order     Order   @relation(fields: [orderId], references: [id])
+
+  productId String  @db.Uuid  
+  product   Product @relation(fields: [productId], references: [id])
+
+  sizeId    String  @db.Uuid  
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+
+model Collection {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String    @unique
+  products  CollectionProduct[]
+
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@map("collections")
+}
+
+model Promotion {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String    @unique
+  discount  Decimal
+  startDate DateTime
+  endDate   DateTime
+  products  PromotionProduct[]
+
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@map("promotions")
+}
+
+model Billboard {
+  id          String @id @default(uuid()) @db.Uuid  
+  label       String
+  imageUrl    String
+  categories  Category[]
+
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @db.Timestamp(6)
+
+  @@map("billboards") 
+}
+
 model Category {
   id          String    @id @default(uuid()) @db.Uuid
   name        String    @unique
   description String?  
+
+  billboardId String    @db.Uuid  
+  billboard   Billboard @relation(fields: [billboardId], references: [id])
+
   createdAt   DateTime  @default(now()) @db.Timestamp(6)
   updatedAt   DateTime  @updatedAt @db.Timestamp(6)
 
-  products    Product[] @relation("CategoryToProduct")
+  products    Product[]
 
   @@map("categories")
+  @@index([billboardId])
 }
 
 model Size {
   id   String @id @default(uuid()) @db.Uuid
+  
   name  String @unique 
   value String @unique
+  
+  products    ProductSize[]
 
-  variants ProductVariant[]
-
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
+  
   @@map("sizes")
 }
 
 model Color {
   id    String @id @default(uuid()) @db.Uuid
+  
   name  String @unique 
   value String @unique
-  variants ProductVariant[]
-
+  
+  products    Product[] 
+  
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
   @@map("colors")
 }
 
 model Image {
   id        String  @id @default(uuid()) @db.Uuid
-  productId String  @db.Uuid
+  productId String  @db.Uuid 
   url       String  
 
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -95,37 +187,66 @@ model Image {
 }
 
 model Product {
-  id          String         @id @default(uuid()) @db.Uuid
+  id          String     @id @default(uuid()) @db.Uuid 
   name        String
-  description String?
-  price       Decimal        @db.Decimal(10,2)
-  stock       Int            @default(0)  
-  createdAt   DateTime       @default(now()) @db.Timestamp(6)
-  updatedAt   DateTime       @updatedAt @db.Timestamp(6)
-
-  categoryId  String    @db.Uuid    
-  category    Category  @relation("CategoryToProduct", fields: [categoryId], references: [id], onDelete: Cascade)
-
-  variants    ProductVariant[]
-  images      Image[]
+  price       Decimal
+  description String
   
+  isFeatured  Boolean   @default(false)
+  isArchived  Boolean   @default(false)
+
+  categoryId  String    @db.Uuid  
+  category    Category  @relation(fields: [categoryId], references: [id])
+
+  colorId     String    @db.Uuid  
+  color       Color     @relation(fields: [colorId], references: [id])
+
+  images      Image[]  
+  sizes       ProductSize[]
+  orderItems  OrderItem[]   
+
+  collections CollectionProduct[]
+  promotions  PromotionProduct[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
   @@index([categoryId])
+  @@index([colorId])
   @@map("products")
 }
 
-model ProductVariant {
-  id        String  @id @default(uuid()) @db.Uuid
-  productId String  @db.Uuid
-  sizeId    String  @db.Uuid
-  colorId   String  @db.Uuid
-  stock     Int     @default(0) 
+model ProductSize {
+  productId String @db.Uuid
+  sizeId    String @db.Uuid
 
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   size      Size    @relation(fields: [sizeId], references: [id], onDelete: Cascade)
-  color     Color   @relation(fields: [colorId], references: [id], onDelete: Cascade)
 
-  @@index([sizeId])
-  @@index([colorId])
-  @@unique([productId, sizeId, colorId])
-  @@map("product_variants")
+  @@id([productId, sizeId]) 
+  @@map("product_sizes")
+}
+
+model CollectionProduct {
+  productId    String @db.Uuid
+  collectionId String @db.Uuid
+
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@id([productId, collectionId])
+  @@index([collectionId])
+  @@map("collection_products")
+}
+
+model PromotionProduct {
+  productId   String @db.Uuid
+  promotionId String @db.Uuid
+
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  promotion Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+
+  @@id([productId, promotionId])
+  @@index([promotionId])
+  @@map("promotion_products")
 }

@@ -1,4 +1,4 @@
-import { IdDto, udpateDto } from 'src/utils/data';
+import { IdDto, updateDto } from 'src/utils/data';
 import { CreateSizeDto} from './data';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -32,7 +32,7 @@ export class SizeService {
         return size;
     }
 
-    async updateSize(dto: udpateDto, userRole: string) {
+    async updateSize(dto: updateDto, userRole: string) {
         if (userRole !== 'ADMIN') {
             throw new AppError('Only admins can update sizes.', HttpStatus.FORBIDDEN);
         }

@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
 
 export class CreateCategoryDto {
     @IsString()
@@ -6,5 +6,10 @@ export class CreateCategoryDto {
     name: string;
 
     @IsString()
+    @IsOptional()
     description?: string;
+
+    @IsUUID()
+    @IsNotEmpty()
+    billboardId: string;
 }

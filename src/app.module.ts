@@ -8,12 +8,14 @@ import { ProductsModule } from './product/product.module';
 import { ColorModule } from './color/color.module';
 import { SizeModule } from './size/size.module';
 import { LoggerMiddleware } from './utils/middleware';
+import { BillboardModule } from './billboard/billboard.module';
+import { OrdersModule } from './orders/orders.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({isGlobal: true}),
     AuthModule, 
-    PrismaModule, UserModule, CategoryModule, ProductsModule, ColorModule, SizeModule
+    PrismaModule, UserModule, BillboardModule, CategoryModule, ProductsModule, ColorModule, SizeModule, OrdersModule
   ],
 })
 export class AppModule implements NestModule {

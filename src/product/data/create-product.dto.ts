@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsNumber, IsArray, ValidateNested } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsArray, ValidateNested, IsBoolean, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class ImageDto {
@@ -12,20 +12,32 @@ export class CreateProductDto {
     @IsNotEmpty()
     name: string;
 
-    @IsString()
-    description?: string;
-
     @IsNumber()
-    @IsNotEmpty()
     price: number;
 
-    @IsNumber()
+    @IsString()
     @IsNotEmpty()
-    stock: number;
+    description:string;
+
+    @IsBoolean()
+    @IsOptional()
+    isFeatured?: boolean;
+
+    @IsBoolean()
+    @IsOptional()
+    isArchived?: boolean;
 
     @IsString()
     @IsNotEmpty()
     categoryId: string;
+
+    @IsString()
+    @IsNotEmpty()
+    colorId: string;
+
+    @IsArray()
+    @IsString({ each: true })
+    sizeIds: string[]; 
 
     @IsArray()
     @ValidateNested({ each: true })

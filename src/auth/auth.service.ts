@@ -131,12 +131,12 @@ export class AuthService {
         }
     }
 
-    private async generateAuthResponse(user: any, message: string, role: "USER" | "ADMIN"): Promise<{ msg: string, user: { id: string, email: string, role: string }, access_token: string }> {
+    private async generateAuthResponse(user: any, message: string, role: "USER" | "ADMIN"): Promise<{ msg: string, user: { id: string, name: string, email: string, role: string }, access_token: string }> {
         const payload = { id: user.id, email: user.email, role };
         const token = await this.jwtService.signAsync(payload);
         return {
             msg: message,
-            user: { id: user.id, email: user.email, role },
+            user: { id: user.id, name: user.name, email: user.email, role },
             access_token: token,
         };
     }

@@ -1,6 +1,6 @@
 import { IsString, IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
 
-export class updateDto {
+export class UpdateCategoryDto {
     @IsUUID()
     @IsNotEmpty()
     id: string;
@@ -11,5 +11,9 @@ export class updateDto {
 
     @IsString()
     @IsOptional()
-    value?: string;
+    description?: string;
+
+    @IsUUID()
+    @IsOptional()
+    billboardId?: string;
 }

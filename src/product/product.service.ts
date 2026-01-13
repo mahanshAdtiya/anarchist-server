@@ -1,7 +1,6 @@
 import { IdDto } from 'src/utils/data';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto, GetProductsDto, UpdateProductDto } from './data';
-
 import { AppError } from '../utils/app-error';
 import { Injectable, HttpStatus } from '@nestjs/common';
 
@@ -17,50 +16,80 @@ export class ProductService {
         return this.prisma.product.create({
             data: {
                 name: dto.name,
-                description: dto.description,
                 price: dto.price,
-                stock: dto.stock,
+                description: dto.description,
+                isFeatured: dto.isFeatured || false,
+                isArchived: dto.isArchived || false,
                 categoryId: dto.categoryId,
+                colorId: dto.colorId,
                 images: {
                     createMany: {
-                        data: dto.images.map((image: { url: string }) => ({
-                            url: image.url,
-                        })),
+                        data: dto.images.map(image => ({ url: image.url })),
+                    },
+                },
+                sizes: {
+                    createMany: {
+                        data: dto.sizeIds.map(sizeId => ({ sizeId })),
                     },
                 },
             },
             include: {
                 images: true,
+                category: true,
+                color: true,
+                sizes: { include: { size: true } },
             },
         });
     }
-    
-    async getProducts(dto: GetProductsDto) {
+
+    async getAllProducts() {
         return this.prisma.product.findMany({
-            where: {
-                categoryId: dto.categoryId || undefined,
-                variants: {
-                    some: {
-                        sizeId: dto.sizeId || undefined,
-                        colorId: dto.colorId || undefined,
-                    },
-                },
-            },
             include: {
                 images: true,
+                category: true,
+                color: true,
+                sizes: { include: { size: true } },
             },
-            orderBy: {
-                createdAt: 'desc', 
-            },
+            orderBy: { createdAt: 'desc' },
         });
+    }
+
+    async getProducts(dto: GetProductsDto) {    
+        const whereClause: any = {
+            categoryId: dto.categoryId || undefined,
+            colorId: dto.colorId || undefined,
+            sizes: dto.sizeIds?.length ? { some: { sizeId: { in: dto.sizeIds } } } : undefined,
+        };
+    
+        if (dto.isFeatured !== null) {
+            whereClause.isFeatured = dto.isFeatured;
+        }
+        if (dto.isArchived !== null) {
+            whereClause.isArchived = dto.isArchived;
+        }
+    
+        const products = await this.prisma.product.findMany({
+            where: whereClause,
+            include: {
+                images: true,
+                category: true,
+                color: true,
+                sizes: { include: { size: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+        return products;
     }
 
     async getProductById(params: IdDto) {
-        const { id } = params;
-
         const product = await this.prisma.product.findUnique({
-            where: { id },
-            include: { images: true, variants: true },
+            where: { id: params.id },
+            include: { 
+                images: true,
+                category: true,
+                color: true,
+                sizes: { include: { size: true } },
+            },
         });
 
         if (!product) {
@@ -70,79 +99,67 @@ export class ProductService {
         return product;
     }
 
-    async updateProduct(dto: UpdateProductDto, userRole: string) {
+    async updateProduct(productId: string, dto: UpdateProductDto, userRole: string) {
         if (userRole !== 'ADMIN') {
             throw new AppError('Only admins can update products.', HttpStatus.FORBIDDEN);
         }
     
-        const { productId } = dto;
-    
         const existingProduct = await this.prisma.product.findUnique({
             where: { id: productId },
-            include: { images: true, variants: true },
+            include: { images: true, sizes: true },
         });
     
         if (!existingProduct) {
             throw new AppError('Product not found.', HttpStatus.NOT_FOUND);
         }
     
-        
         const updateData: any = {};
     
         if (dto.name) updateData.name = dto.name;
-        if (dto.description) updateData.description = dto.description;
         if (dto.price) updateData.price = dto.price;
-        if (dto.stock) updateData.stock = dto.stock;
         if (dto.categoryId) updateData.categoryId = dto.categoryId;
+        if (dto.colorId) updateData.colorId = dto.colorId;
+        if (dto.isFeatured !== undefined) updateData.isFeatured = dto.isFeatured;
+        if (dto.isArchived !== undefined) updateData.isArchived = dto.isArchived;
+        if (dto.description) updateData.description = dto.description;
     
-        // Handle Images Update
         if (dto.images) {
             await this.prisma.image.deleteMany({ where: { productId } });
-    
             updateData.images = {
-                createMany: {
-                    data: dto.images.map((image) => ({ url: image.url })),
-                },
+                createMany: { data: dto.images.map(image => ({ url: image.url })) },
             };
         }
     
-        // Handle Variants (Size & Color)
-        if (dto.sizeId || dto.colorId) {
-            const existingVariant = existingProduct.variants.find(
-                (variant) => variant.sizeId === dto.sizeId && variant.colorId === dto.colorId
-            );
-    
-            if (!existingVariant) {
-                updateData.variants = {
-                    create: {
-                        sizeId: dto.sizeId,
-                        colorId: dto.colorId,
-                        stock: dto.stock || existingProduct.stock,
-                    },
-                };
-            }
+        if (dto.sizeIds) {
+            await this.prisma.productSize.deleteMany({ where: { productId } });
+            updateData.sizes = {
+                createMany: { data: dto.sizeIds.map(sizeId => ({ sizeId })) },
+            };
         }
     
-        // Update Product
         return this.prisma.product.update({
             where: { id: productId },
             data: updateData,
-            include: { images: true, variants: true },
+            include: { 
+                images: true,
+                category: true,
+                color: true,
+                sizes: { include: { size: true } },
+            },
         });
     }
     
+
     async deleteProduct(params: IdDto, userRole: string) {
         if (userRole !== 'ADMIN') {
             throw new AppError('Only admins can delete products.', HttpStatus.FORBIDDEN);
         }
 
-        const { id } = params;
-
-        const product = await this.prisma.product.findUnique({ where: { id } });
+        const product = await this.prisma.product.findUnique({ where: { id: params.id } });
         if (!product) {
             throw new AppError('Product not found.', HttpStatus.NOT_FOUND);
         }
 
-        return this.prisma.product.delete({ where: { id } });
+        return this.prisma.product.delete({ where: { id: params.id } });
     }
 }

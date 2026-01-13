@@ -1,5 +1,0 @@
--- AlterTable
-ALTER TABLE "admins" ALTER COLUMN "type" SET DEFAULT 'ADMIN';
-
--- AlterTable
-ALTER TABLE "users" ALTER COLUMN "type" SET DEFAULT 'CUSTOMER';

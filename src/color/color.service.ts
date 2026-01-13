@@ -1,4 +1,4 @@
-import { IdDto, udpateDto } from 'src/utils/data';
+import { IdDto, updateDto } from 'src/utils/data';
 import { CreateColorDto} from './data';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -30,7 +30,7 @@ export class ColorService {
         return color;
     }
 
-    async updateColor(dto: udpateDto, userRole: string) {
+    async updateColor(dto: updateDto, userRole: string) {
         if (userRole !== 'ADMIN') {
             throw new AppError('Only admins can update colors.', HttpStatus.FORBIDDEN);
         }
