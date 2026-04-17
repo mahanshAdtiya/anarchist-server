@@ -11,21 +11,25 @@ async function bootstrap() {
   
   const configService = app.get(ConfigService);
 
+  const allowedOrigins = configService.get<string>('CORS_ORIGIN') || '*';
+
   app.enableCors({
-    origin: "*",
-    methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
-    allowedHeaders: "Content-Type, Authorization",
-    credentials: true,
+    origin: allowedOrigins === '*' ? true : allowedOrigins.split(','),
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type, Authorization',
+    credentials: allowedOrigins !== '*', 
   });
-  
-  
+
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
   app.useGlobalInterceptors(new ResponseInterceptor());
   app.useGlobalFilters(new GlobalExceptionFilter(configService));
 
-  const port = configService.get<number>('PORT') ?? 3000;
+  const port = configService.get<number>('PORT') ?? 8080;
+  const baseUrl = configService.get<string>('BASE_URL');
+
   await app.listen(port);
-  console.log(`🚀 Server running on http://localhost:${port}`);
+
+  console.log(`🚀 Server started on ${baseUrl}`);
 }
 
 bootstrap();
