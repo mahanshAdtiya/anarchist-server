@@ -13,7 +13,7 @@
     "create-admin": "ts-node -r tsconfig-paths/register scripts/create-admin.ts",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "start": "node dist/main.js",
+    "start": "prisma migrate deploy && node dist/main.js",
     "start:prod": "prisma migrate deploy && node dist/main.js",
     "postinstall": "prisma generate",
     "dev": "nest start --watch",
